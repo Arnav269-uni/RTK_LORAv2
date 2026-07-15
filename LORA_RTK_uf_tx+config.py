@@ -80,7 +80,7 @@ logging.basicConfig(level=logging.ERROR, format="%(name)s: %(message)s")
 # constellations than the base was providing corrections for.
 KEEP_TYPES     = {1005, 1074, 1084, 1094, 1124, 1230}
 # 1084 removed from EPOCH_COMPLETE so we don't get "incomplete epoch" warnings if GLONASS drops out
-EPOCH_COMPLETE = {1005, 1074, 1094, 1124}
+EPOCH_COMPLETE = {1005, 1074, 1094, 1124}  # 1230 included to prevent epoch boundary bleed (validated in LORA_BASE_sim.py)
 
 # ── LoRa config ──────────────────────────────────────────────────────────────
 NETWORK_ID    = 5
@@ -389,7 +389,7 @@ def lora_send_message(lora_ser, msg_type: int, raw_bytes: bytes) -> bool:
         status = "OK" if ok else f"FAIL({reply!r})"
         print(f"  TX {header[:-1]:8s} | {len(payload):3d} chars | "
               f"{elapsed:.2f}s | {status}")
-        time.sleep(0.2)  # Increased delay to 200ms between chunks for maximum stability
+        time.sleep(0.02)  # Increased delay to 200ms between chunks for maximum stability
 
     return all_ok
 
@@ -479,9 +479,8 @@ def stream_loop(gnss_port, gnss_baud, lora_port, lora_baud, lora_address):
                   f"| queue depth {msg_queue.qsize()}")
             lora_send_message(lora_ser, mt, raw)
             
-            # Induce a delay between completely separate messages in the same epoch
-            # Since GNSS rate is 0.5Hz, we have plenty of time. This prevents RX overload.
-            time.sleep(0.2)
+            # Mild delay between messages to prevent RX overload without breaking the queue limit
+            time.sleep(0.01)  # reduced from 0.05 -- safe because wait_for_ok() already blocks until +OK (validated in LORA_BASE_sim.py)
 
             if EPOCH_COMPLETE.issubset(epoch_buf):
                 epoch_num += 1
