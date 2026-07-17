@@ -93,7 +93,8 @@ class TcpRtcmServer:
             num_sent = 0
             for client in self.clients:
                 try:
-                    client.sendall(data)
+                    packet = len(data).to_bytes(2, "big") + data
+                    client.sendall(packet)
                     num_sent += 1
                 except (BrokenPipeError, ConnectionResetError, OSError):
                     dead_clients.append(client)
